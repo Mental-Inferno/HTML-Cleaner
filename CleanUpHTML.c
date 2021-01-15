@@ -66,7 +66,7 @@ int main(void) {
     }
     fclose(TargetFile);
 
-    //Add an ending sequence to the file that is not expected to be written in the responses
+    //Add an ending sequence (not expected to be written in the responses) to the file
     TargetFile = fopen(TargetFileAddress, "a");
     CharacterResevoir[0] = '|';
     CharacterResevoir[1] = 'O';
