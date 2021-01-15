@@ -4,10 +4,11 @@
 #include <stdbool.h>
 
 #define MAXLENGTH 65535
+#define MEMORY 1000001
 
-void AppendFile (char* FileAddress, char CharacterToBeAdded);
-char ReadCharFromFile (char* FileAddress, long int OffsetFromStart);
-bool DetectFileEnd (char* FileAddress, long int OffsetFromStart);
+void AppendFile (FILE* FilePtr, char ListOfChar[1000001], int StopPosition);
+char ReadCharFromFile (FILE* FilePtr, int OffsetFromStart);
+bool DetectFileEnd (FILE* FilePtr, long int OffsetFromStart);
 
 int main(void) {
 
@@ -15,10 +16,11 @@ int main(void) {
     FILE* TargetFile;
     char* TargetFileAddress = (char*)calloc(MAXLENGTH+1, sizeof(char));
     char* TempFileAddress = "TempTxtFile.txt";
+    char CharacterResevoir[MEMORY];
     char CurrentChar = 'a';
+    int ResevoirCounter = 0;
     int Counter = 0;
     int LengthOfAddress = 0;
-    int WordCount = 0;
     long int Cursor = -1;
     bool FileEnded = false;
 
@@ -65,50 +67,66 @@ int main(void) {
     fclose(TargetFile);
 
     //Add an ending sequence to the file that is not expected to be written in the responses
-    AppendFile(TargetFileAddress, '|');
-    AppendFile(TargetFileAddress, 'O');
-    AppendFile(TargetFileAddress, '_');
-    AppendFile(TargetFileAddress, 'o');
-    AppendFile(TargetFileAddress, '|');
+    TargetFile = fopen(TargetFileAddress, "a");
+    CharacterResevoir[0] = '|';
+    CharacterResevoir[1] = 'O';
+    CharacterResevoir[2] = '_';
+    CharacterResevoir[3] = 'o';
+    CharacterResevoir[4] = '|';
+    AppendFile(TargetFile, CharacterResevoir, 4);
+    fclose(TargetFile);
 
     //The entire target file is copied to the temporary file character by character. Any HTML formatting enclosed and including '<' and '>' is ommitted
     printf("Starting HTML cleaning...\n");
     FileEnded = false;
     Cursor = -1;
-    WordCount = 0;
+
     while (FileEnded == false) {
+        ResevoirCounter = -1;
+        TargetFile = fopen(TargetFileAddress, "r");
 
-        Cursor++;
-        CurrentChar = ReadCharFromFile(TargetFileAddress, Cursor);
+        while ((ResevoirCounter < (MEMORY-1)) && (FileEnded == false)){ //Keeps on reading characters from source and storing them in the array. Ends when array is full or end of file is reached.
+            Cursor++;
+            CurrentChar = ReadCharFromFile(TargetFile, Cursor);
 
-        if (CurrentChar == '<') { //HTML formatting detected
-            while (CurrentChar != '>') {//Skipping HTML formatting
-                Cursor++;
-                CurrentChar = ReadCharFromFile(TargetFileAddress, Cursor);
+            if (CurrentChar == '<') { //HTML formatting detected
+                while (CurrentChar != '>') {//Skipping HTML formatting
+                    Cursor++;
+                    CurrentChar = ReadCharFromFile(TargetFile, Cursor);
+                }
+            }
+
+            else if ((CurrentChar == '|') && (DetectFileEnd(TargetFile, Cursor) == true)) { //If first character of ending sequence is detected
+                FileEnded = true; //Stop the read cycle of target file and write cycle to temp file
+            }
+
+            else if ((CurrentChar == '\n') && (ReadCharFromFile(TargetFile, Cursor+1) == '\n')) {//Accounts for the C program reading the enter in the text file as two newline characters
+                ResevoirCounter++;
+                CharacterResevoir[ResevoirCounter] = '\n';
+                Cursor++; //Skips reading the next newline character
+            }
+
+            else { //Normal text is detected
+                ResevoirCounter++;
+                CharacterResevoir[ResevoirCounter] = CurrentChar;
             }
         }
-        else if ((CurrentChar == '|') && (DetectFileEnd(TargetFileAddress, Cursor) == true)) { //If first character of ending sequence is detected
-            AppendFile(TempFileAddress, '|');
-            AppendFile(TempFileAddress, 'O');
-            AppendFile(TempFileAddress, '_');
-            AppendFile(TempFileAddress, 'o');
-            AppendFile(TempFileAddress, '|');
-            FileEnded = true;
-        }
-        else if ((CurrentChar == '\n') && (ReadCharFromFile(TargetFileAddress, Cursor+1) == '\n')) {//Accounts for the C program reading the enter in the text file as two newline characters
-            AppendFile(TempFileAddress, '\n');
-            Cursor++;
-        }
-        else { //Normal text is detected
-            AppendFile(TempFileAddress, CurrentChar);
-        }
+        fclose(TargetFile); //Reading Sequence is ended
 
-        if ((Cursor/10001) > WordCount){
-            printf("%ld characters have been transferred to the temporary file\n", Cursor);
-            WordCount++;
-        }
-
+        TempFile = fopen(TempFileAddress, "a");
+        AppendFile(TempFile, CharacterResevoir, ResevoirCounter); //Storing current data in resevoir into temp file
+        fclose(TempFile);
+    
+        printf("%ld characters have been processed from the original file\n", Cursor);
     }
+    TempFile = fopen(TempFileAddress, "a");//Adding ending sequence to temp file
+    CharacterResevoir[0] = '|';
+    CharacterResevoir[1] = 'O';
+    CharacterResevoir[2] = '_';
+    CharacterResevoir[3] = 'o';
+    CharacterResevoir[4] = '|';
+    AppendFile(TargetFile, CharacterResevoir, 4);
+    fclose(TempFile); 
     printf("Cleaned data copied to temporary file\nBeginning data transfer to original file...\n");
     
     //Target file is wiped clean
@@ -116,29 +134,39 @@ int main(void) {
     fclose(TargetFile);
 
     //The temporary file will be copied back over to the target file but the ending sequence will be ommitted
-    FileEnded = false;
+        FileEnded = false;
     Cursor = -1;
-    WordCount = 0;
+
     while (FileEnded == false) {
+        ResevoirCounter = -1;
+        TempFile = fopen(TempFileAddress, "r");
 
-        Cursor++;
-        CurrentChar = ReadCharFromFile(TempFileAddress, Cursor);
-
-        if ((CurrentChar == '|') && (DetectFileEnd(TempFileAddress, Cursor) == true)) { //Ending sequence detetcted
-            FileEnded = true;
-        }
-        else if ((CurrentChar == '\n') && (ReadCharFromFile(TempFileAddress, Cursor+1) == '\n')) {//Accounts for the C program reading the eneter in the text file as two newline characters
-            AppendFile(TargetFileAddress, '\n');
+        while ((ResevoirCounter < (MEMORY-1)) && (FileEnded == false)){ //Keeps on reading characters from source and storing them in the array. Ends when array is full or end of file is reached.
             Cursor++;
-        }
-        else { //Normal text is detected
-            AppendFile(TargetFileAddress, CurrentChar);
-        }
+            CurrentChar = ReadCharFromFile(TempFile, Cursor);
 
-        if ((Cursor/10001) > WordCount){
-            printf("%ld characters have been transferred to the original file\n", Cursor);
-            WordCount++;
+            if ((CurrentChar == '|') && (DetectFileEnd(TempFile, Cursor) == true)) { //If first character of ending sequence is detected
+                FileEnded = true; //Stop the read cycle of temp file and write cycle to target file
+            }
+
+            else if ((CurrentChar == '\n') && (ReadCharFromFile(TempFile, Cursor+1) == '\n')) {//Accounts for the C program reading the enter in the text file as two newline characters
+                ResevoirCounter++;
+                CharacterResevoir[ResevoirCounter] = '\n';
+                Cursor++; //Skips reading the next newline character
+            }
+
+            else { //Normal text is detected
+                ResevoirCounter++;
+                CharacterResevoir[ResevoirCounter] = CurrentChar;
+            }
         }
+        fclose(TempFile); //Reading Sequence is ended
+
+        TargetFile = fopen(TargetFileAddress, "a");
+        AppendFile(TargetFile, CharacterResevoir, ResevoirCounter); //Storing current data in resevoir into temp file
+        fclose(TempFile);
+    
+        printf("%ld characters have been transferred to the original file\n", Cursor);
     }
     printf("HTML cleaning complete!\n");
 
@@ -153,55 +181,50 @@ int main(void) {
     return 0;
 }
 
-void AppendFile (char* FileAddress, char CharacterToBeAdded) {
+void AppendFile (FILE* FilePtr, char ListOfChar[MEMORY], int StopIndex) {
+
+    for(int i=0; i<=StopIndex; i++){
+        fflush(FilePtr);
+        fprintf(FilePtr, "%c", ListOfChar[i]);
+    }
     
-    FILE* FilePtr;
-
-    FilePtr = fopen(FileAddress, "a");
-    fflush(FilePtr);
-    fprintf(FilePtr, "%c", CharacterToBeAdded);
-    fclose(FilePtr);
-
     return;
 }
 
-char ReadCharFromFile (char* FileAddress, long int OffsetFromStart) {
+char ReadCharFromFile (FILE* FilePtr, int OffsetFromStart) {
     
-    FILE* FilePtr;
     char Output = 'a';
 
-    FilePtr = fopen(FileAddress, "r");
     fseek(FilePtr, OffsetFromStart, SEEK_SET);//Brings cursor to current position of interest
     fscanf(FilePtr, "%c", &Output);
-    fclose(FilePtr);
 
     return Output;
 }
 
-bool DetectFileEnd (char* FileAddress, long int OffsetFromStart) {
+bool DetectFileEnd (FILE* FilePtr, long int OffsetFromStart) {
 
     bool Output = false;
     char CurrentChar = 'a';
     long int Offset = OffsetFromStart;
 
-    CurrentChar = ReadCharFromFile(FileAddress, Offset);
+    CurrentChar = ReadCharFromFile(FilePtr, Offset);
 
     //Testing for the ending sequence
     if (CurrentChar == '|') {
         Offset++;
-        CurrentChar = ReadCharFromFile(FileAddress, Offset);
+        CurrentChar = ReadCharFromFile(FilePtr, Offset);
 
         if (CurrentChar == 'O') {
             Offset++;
-            CurrentChar = ReadCharFromFile(FileAddress, Offset);
+            CurrentChar = ReadCharFromFile(FilePtr, Offset);
 
             if (CurrentChar == '_') {
                 Offset++;
-                CurrentChar = ReadCharFromFile(FileAddress, Offset);
+                CurrentChar = ReadCharFromFile(FilePtr, Offset);
 
                 if (CurrentChar == 'o') {
                     Offset++;
-                    CurrentChar = ReadCharFromFile(FileAddress, Offset);
+                    CurrentChar = ReadCharFromFile(FilePtr, Offset);
 
                     if (CurrentChar == '|') {
                         Output = true;
