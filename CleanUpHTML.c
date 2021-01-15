@@ -3,10 +3,10 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define MAXLENGTH 65535
-#define MEMORY 1000001
+#define MAXLENGTH 65535 //Maxlength of a PATH in Windows
+#define MEMORY 1048576 //One megabyte worth of char storage
 
-void AppendFile (FILE* FilePtr, char ListOfChar[1000001], int StopPosition);
+void AppendFile (FILE* FilePtr, char ListOfChar[MEMORY], int StopPosition);
 char ReadCharFromFile (FILE* FilePtr, int OffsetFromStart);
 bool DetectFileEnd (FILE* FilePtr, long int OffsetFromStart);
 
