@@ -1,5 +1,5 @@
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
-# Canvas Discussion
+# HTML Cleaner
 
 This project deletes everything elcosed in '<' and '>' from a text file.
 This is usefule to remove HTML formatting from text files where data is note expected to be enclosed in '<' and '>'.
