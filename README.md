@@ -19,7 +19,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 1. Clone this repo. `git clone https://github.com/Mental-Inferno/HTML-Cleaner.git`
 2. Then cd into the directory. `cd HTML-Cleaner`
-3. On UNIX operating systems, compile and run the `CleanUpHTML.c` file using a compiler that supports at least the the C99 standard
+3. Compile and run the `CleanUpHTML.c` file using a compiler that supports at least the the C99 standard
 
 
 ## Author
